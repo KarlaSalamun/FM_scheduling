@@ -1,0 +1,3 @@
+[submodule "periodic_tasks_simulator"]
+	path = periodic_tasks_simulator
+	url = ../periodic_tasks_simulator/
