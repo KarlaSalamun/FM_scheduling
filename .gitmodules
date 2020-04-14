@@ -1,0 +1,4 @@
+[submodule "periodic_tasks_simulator"]
+	path = periodic_tasks_simulator
+	url = git@github.com:KarlaSalamun/periodic_tasks_simulator.git
+	branch = master
