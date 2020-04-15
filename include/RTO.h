@@ -14,10 +14,10 @@ public:
         task_number( task_number ), creator( creator ), sched( sched ) {}
     void initialize();
     void load();
-    void simulate( double finish_time, double time_slice );
+    virtual void simulate( double finish_time, double time_slice );
     void set_qos( double value );
     double get_qos();
-private:
+protected:
     int task_number;
     int all_tasks = 0;
     int completed_tasks = 0;
