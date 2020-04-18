@@ -3,7 +3,7 @@
 //
 #include "BWP.h"
 
-void BWP::simulate( double finish_time, double time_slice )
+void BWP::simulate( double time_slice )
 {
     Task *running = nullptr;				// TODO: ovo je leak
     while( abs_time < finish_time ) {
