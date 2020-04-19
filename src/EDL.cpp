@@ -4,13 +4,18 @@
 #include "EDL.h"
 #include "Simulator.tpp"
 
-void EDL::compute_schedule(std::vector<Task *> &pending)
+void EDL::compute_schedule()
 {
-    compute_hyperperiod( pending );
-    simulator->set_finish_time( hyperperiod );
+    std::vector<Task *> tmp;
+    tmp = simulator->get_pending();
+    compute_hyperperiod( tmp );     // TODO sto s doubleovima
+    hyperperiod = 18;
+    simulator->set_finish_time( 18 );
     simulator->run();
     deadline_vector = simulator->get_deadline_vector();
     idle_time_vector = simulator->get_idle_time_vector();
+    set_EDL_idle_time_vector();
+    compute_EDL_deadline_vector();
 }
 
 void EDL::compute_hyperperiod(std::vector<Task *> &tasks)
@@ -25,14 +30,13 @@ void EDL::compute_hyperperiod(std::vector<Task *> &tasks)
     });
 }
 
-std::vector<double> EDL::compute_EDL_deadline_vector( std::vector<double> init_deadline_vector )
+void EDL::compute_EDL_deadline_vector()
 {
-    std::vector<double> result( init_deadline_vector.size() );
+    EDL_deadline_vector.resize( deadline_vector.size() );
     for( size_t i=0; i<deadline_vector.size(); i++ ) {
-        result[i] = hyperperiod -
-                deadline_vector[deadline_vector.size() - i - 1] - idle_time_vector[i];
+        EDL_deadline_vector[i] = hyperperiod -
+                deadline_vector[deadline_vector.size() - i - 1] - EDL_idle_time_vector[i];
     }
-    return result;
 }
 
 std::vector<double> EDL::update_schedule( std::vector<double> init_deadline_vector, double curr_time )
