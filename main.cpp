@@ -12,7 +12,7 @@ void print_vector( std::vector<double> vector );
 int main()
 {
     std::vector<Task *> pending;
-    UunifastCreator *tc = new UunifastCreator( 4, "./../test_inputs/rto.txt", true, 5, 1, 1, 1.2 );
+    UunifastCreator *tc = new UunifastCreator( 4, "./../../test_inputs/rto.txt", true, 5, 1, 1, 1.2 );
     tc->set_time_slice(1);
     Scheduler *sched = new Scheduler();
     RTO *rto = new RTO( 4, tc, sched, 72 );

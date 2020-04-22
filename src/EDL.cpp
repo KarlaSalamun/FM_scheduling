@@ -14,13 +14,16 @@ void EDL::compute_schedule( std::vector<Task *> tasks, Task *running, double cur
     if( running ) {
         tasks.push_back( running );
     }
+    for( auto & element : tasks ) {
+        element->set_arrival_time( current_time );
+    }
     rto->set_pending( tasks );
     rto->set_abs_time( current_time );
     rto->simulate( 1 );
     deadline_vector = rto->get_deadline_vector();
     idle_time_vector = rto->get_idle_time_vector();
-    set_EDL_idle_time_vector();
-    compute_EDL_deadline_vector();
+//    set_EDL_idle_time_vector();
+//    compute_EDL_deadline_vector();
 }
 
 void EDL::compute_hyperperiod(std::vector<Task *> &tasks)
@@ -37,6 +40,7 @@ void EDL::compute_hyperperiod(std::vector<Task *> &tasks)
 
 void EDL::compute_EDL_deadline_vector()
 {
+    EDL_deadline_vector.clear();
     EDL_deadline_vector.resize( deadline_vector.size() );
     for( size_t i=0; i<deadline_vector.size(); i++ ) {
         EDL_deadline_vector[i] = hyperperiod -

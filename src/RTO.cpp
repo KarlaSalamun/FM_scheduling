@@ -26,12 +26,24 @@ void RTO::load()
 void RTO::simulate( double time_slice )
 {
     double tmp_idle = 0;
-    double start_idle = 0;
+    idle = false;
+    double start_idle = abs_time;
+    idle_time_vector.clear();
+    deadline_vector.clear();
+
+//    double max_period = pending[0]->get_period();
+//
+//    for( auto & element : pending ) {
+//        if( element->get_period() > max_period ) {
+//            max_period = element->get_period();
+//        }
+//    }
+//
+//    set_finish_time( max_period );
     while( abs_time < finish_time ) {
         red.clear();
         blue.clear();
         std::vector<Task *>::iterator it = pending.begin();
-
         while (it != pending.end()) {
             if ((*it)->isReady(abs_time)) {
                 all_tasks++;
@@ -104,6 +116,7 @@ void RTO::simulate( double time_slice )
 //        printf("\ntime: %f\n\n", abs_time);
 
         if (running) {
+            idle = false;
             if (running->isFinished()) {
 //                printf("task %d is finished!\n", running->get_id());
                 running->update_tardiness(abs_time);
@@ -123,6 +136,12 @@ void RTO::simulate( double time_slice )
             }
         }
     }
+
+    if( idle ) {
+        deadline_vector.push_back( start_idle );
+        idle_time_vector.push_back( tmp_idle + time_slice );
+    }
+
     set_qos( ( completed_tasks ) / static_cast<double>(all_tasks) );
 //    printf( "qos: %f\n", get_qos() );
 }

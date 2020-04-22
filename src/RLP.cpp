@@ -2,7 +2,7 @@
 
 void RLP::simulate( double finish_time )
 {
-    edl->compute_schedule( waiting, nullptr, 0 );
+
 //    edl->compute_EDL_deadline_vector();
 //    edl->set_EDL_idle_time_vector();
 
@@ -10,6 +10,21 @@ void RLP::simulate( double finish_time )
         element->set_state( RED );      // first instance is always red
         element->set_arrival_time( 0 );     // all instances have release time = 0
         element->initialize_task();
+        element->set_skip_factor(2);
+        element->set_abs_dd();
+    }
+
+    edl->compute_schedule( waiting, nullptr, 0 );
+    std::vector<double> tmp = edl->get_idle_time_vector();
+    edl->set_EDL_idle_time_vector( tmp );
+    tmp = edl->get_deadline_vector();
+    edl->set_EDL_deadline_vector( tmp );
+
+    for( auto & element : waiting ) {
+        element->set_state( RED );      // first instance is always red
+        element->set_arrival_time( 0 );     // all instances have release time = 0
+        element->initialize_task();
+        element->set_skip_factor(2);
         element->set_abs_dd();
     }
 
@@ -41,6 +56,7 @@ void RLP::algorithm( double current_time )
         }
         bool available = edl->compute_availability( current_time );
         if( (*it)->get_curr_skip_value() < (*it)->get_skip_factor() and !available ) {
+            (*it)->set_state( RED );
             red_ready.push_back(*it);
             it = waiting.erase(it);
         }
@@ -48,13 +64,14 @@ void RLP::algorithm( double current_time )
             if( blue_ready.empty() ) {
                 edl->compute_schedule( red_ready, running, current_time );
                 printf("computed EDL schedule\n" );
+                edl->update_EDL_idle_time_vector();
                 edl->compute_EDL_deadline_vector();
-                edl->set_EDL_idle_time_vector();
-//                edl->update_schedule(current_time);
+                edl->update_schedule(current_time);
             }
             if( edl->compute_availability( current_time ) ) {
                 // release blue task
                 blue_ready.push_back( *it );
+                (*it)->set_state( BLUE );
                 it = waiting.erase( it );
             }
             else {
@@ -63,7 +80,8 @@ void RLP::algorithm( double current_time )
         }
         (*it)->set_curr_skip_value( (*it)->get_curr_skip_value() + 1 );
     }
-    if( !blue_ready.empty() and !edl->compute_availability( current_time ) ) {
+    bool availability = edl->compute_availability( current_time );
+    if( !blue_ready.empty() and !availability ) {
         it = red_ready.begin();
         while( it != red_ready.end() ) {
             waiting.push_back( *it );
@@ -88,11 +106,18 @@ void RLP::algorithm( double current_time )
     }
 
     if( running ) {
+        if( running->get_state() == RED and availability ) {
+            running->update_remaining();
+            red_ready.push_back( running );
+            running = blue_ready[0];
+            blue_ready.erase( blue_ready.begin() );
+            printf( "blue task is running!\n" );
+        }
         if( running->isFinished() ) {
             running->reset_remaining();
             running->inc_instance();
             running->set_arrival_time();
-            running->update_rb_params();
+            running->update_params();
             printf( "task %d is finished\n", running->get_id() );
             waiting.push_back( running );
             running = nullptr;
@@ -117,7 +142,6 @@ void RLP::algorithm( double current_time )
                 red_ready.erase( red_ready.end() );
             }
         }
-        running->set_abs_dd();
     }
 
 //    printf( "red list: " );
