@@ -10,11 +10,12 @@
 #include <numeric>
 #include <cmath>
 #include <utility>
+#include "RTO.h"
 
 class EDL {
 public:
-    EDL( Simulator<Dummy *> *simulator ) : simulator( simulator ) {}
-    void compute_schedule();
+    EDL( RTO *rto ) : rto( rto ) {}
+    void compute_schedule( std::vector<Task *> tasks, Task *running, double current_time );
     std::vector<double> get_deadline_vector()
     {
         return deadline_vector;
@@ -36,7 +37,8 @@ public:
         std::reverse( EDL_idle_time_vector.begin(), EDL_idle_time_vector.end() );
     }
     void compute_EDL_deadline_vector();
-    std::vector<double> update_schedule( std::vector<double> init_deadline_vector, double curr_time );
+    void update_schedule( double curr_time );
+    bool compute_availability( double time );
 
 private:
     double hyperperiod;
@@ -45,7 +47,7 @@ private:
     std::vector<double> idle_time_vector;
     std::vector<double> EDL_idle_time_vector;
     void compute_hyperperiod(std::vector<Task *> &tasks);
-    Simulator<Dummy *> *simulator;
+    RTO *rto;
 };
 
 #endif //FM_SCHEDULING_EDL_H

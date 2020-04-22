@@ -19,6 +19,28 @@ public:
     double get_qos();
     std::vector<Task *> pending;
     double compute_eq_utilization();
+    std::vector<Task *> get_pending()
+    {
+        return pending;
+    }
+    void set_finish_time( double time ) {
+        this->finish_time = time;
+    }
+    std::vector<double> get_deadline_vector() {
+        return deadline_vector;
+    }
+    std::vector<double> get_idle_time_vector() {
+        return idle_time_vector;
+    }
+    void set_pending( std::vector<Task *> tasks ) {
+        pending = tasks;
+    }
+    void set_running( Task *task ) {
+        this->running = task;
+    }
+    void set_abs_time( double current_time ) {
+        this->abs_time = current_time;
+    }
 
 protected:
     int task_number;
@@ -34,6 +56,12 @@ protected:
     double qos;
     double finish_time;
     double compute_D( int l, double period, double factor, double duration );
+
+private:
+    Task *running;
+    bool idle;
+    std::vector<double> deadline_vector;
+    std::vector<double> idle_time_vector;
 };
 
 #endif //FM_SCHEDULING_RTO_H

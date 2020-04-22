@@ -25,7 +25,8 @@ void RTO::load()
 
 void RTO::simulate( double time_slice )
 {
-    Task *running = nullptr;				// TODO: ovo je leak
+    double tmp_idle = 0;
+    double start_idle = 0;
     while( abs_time < finish_time ) {
         red.clear();
         blue.clear();
@@ -38,23 +39,43 @@ void RTO::simulate( double time_slice )
                 if ((*it)->get_state() == RED) {
                     ready.push_back(std::move(*it));
                 } else {
-                    printf("task %d is skipped\n", (*it)->get_id());
+//                    printf("task %d is skipped\n", (*it)->get_id());
                     blue.push_back(std::move(*it));
                 }
                 it = pending.erase(it);
-                printf("task %d is ready!\n", (*it)->get_id());
+//                printf("task %d is ready!\n", (*it)->get_id());
             } else {
                 it++;
             }
         }
         std::copy(blue.begin(), blue.end(), std::back_inserter(pending));
 
-        if (!ready.empty()) {
-            printf("scheduling tasks : ");
-            for (auto &element : ready) {
-                printf("%d ", element->get_id());
+        if( !running ) {
+            if( !idle ) {
+                start_idle = abs_time;
+                idle = true;
+//                printf("IDLE\n");
             }
-            printf("\n");
+            else {
+                tmp_idle += time_slice;
+//                printf("idle: %f\n", tmp_idle);
+            }
+        }
+        else {
+            if( std::isgreater(fabs( tmp_idle ), 0.) ) {
+                idle_time_vector.push_back( tmp_idle );
+                deadline_vector.push_back( start_idle );
+                tmp_idle = 0;
+                idle = false;
+            }
+        }
+
+        if (!ready.empty()) {
+//            printf("scheduling tasks : ");
+//            for (auto &element : ready) {
+//                printf("%d ", element->get_id());
+//            }
+//            printf("\n");
 
             for (size_t i = 0; i < ready.size(); i++) {
                 ready[i]->update_priority(abs_time);
@@ -80,11 +101,11 @@ void RTO::simulate( double time_slice )
         }
 
         abs_time += time_slice;
-        printf("\ntime: %f\n\n", abs_time);
+//        printf("\ntime: %f\n\n", abs_time);
 
         if (running) {
             if (running->isFinished()) {
-                printf("task %d is finished!\n", running->get_id());
+//                printf("task %d is finished!\n", running->get_id());
                 running->update_tardiness(abs_time);
                 running->reset_remaining();
                 pending.push_back(std::move(running));
@@ -103,7 +124,7 @@ void RTO::simulate( double time_slice )
         }
     }
     set_qos( ( completed_tasks ) / static_cast<double>(all_tasks) );
-    printf( "qos: %f\n", get_qos() );
+//    printf( "qos: %f\n", get_qos() );
 }
 
 double RTO::compute_eq_utilization()

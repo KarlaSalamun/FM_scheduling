@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror")
 include_directories(include)
 include_directories(periodic_tasks_simulator/include)
 
-add_executable( FM_scheduling src/RTO.cpp src/BWP.cpp src/EDL.cpp
+add_executable( FM_scheduling src/RTO.cpp src/BWP.cpp src/EDL.cpp src/RLP.cpp
                 main.cpp )
 
 add_subdirectory( periodic_tasks_simulator )
