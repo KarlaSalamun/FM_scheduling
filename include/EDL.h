@@ -15,7 +15,7 @@
 class EDL {
 public:
     EDL( RTO *rto ) : rto( rto ) {}
-    void compute_schedule( std::vector<Task *> tasks, Task *running, double current_time );
+    void compute_schedule( const std::vector<Task *> tasks, const Task *running, double current_time );
     std::vector<double> get_deadline_vector()
     {
         return deadline_vector;
@@ -46,6 +46,7 @@ public:
     void compute_EDL_deadline_vector();
     void update_schedule( double curr_time );
     bool compute_availability( double time );
+    bool dynamic_sched( std::vector<Task *> tasks, const Task *running, int current_time );
 
 private:
     double hyperperiod;

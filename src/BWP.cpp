@@ -125,7 +125,7 @@ void BWP::simulate( double time_slice )
 
         for( auto & element : pending ) {
             if( element->is_next_instance( abs_time ) ) {
-                element->update_rb_params();
+                element->update_rb_params();                 // TODO popraviti ovo: kad je blue zadatak completed, sljedeci je blue. kad ima miss onda je red!
             }
         }
     }

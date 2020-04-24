@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include "Task.h"
 #include "EDL.h"
 
@@ -23,4 +24,5 @@ private:
     double time_slice;
     Task *running;
     void algorithm( double current_time );
+    static void break_dd_tie( std::vector<Task *> tasks );
 };

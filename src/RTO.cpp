@@ -40,10 +40,12 @@ void RTO::simulate( double time_slice )
 //    }
 //
 //    set_finish_time( max_period );
+    running = nullptr;
     while( abs_time < finish_time ) {
         red.clear();
         blue.clear();
         std::vector<Task *>::iterator it = pending.begin();
+
         while (it != pending.end()) {
             if ((*it)->isReady(abs_time)) {
                 all_tasks++;

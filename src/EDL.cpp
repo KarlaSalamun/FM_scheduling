@@ -4,20 +4,30 @@
 #include "EDL.h"
 #include "Simulator.tpp"
 
-void EDL::compute_schedule( std::vector<Task *> tasks, Task *running, double current_time )
+void EDL::compute_schedule( const std::vector<Task *> tasks, const Task *running, double current_time )
 {
     std::vector<Task *> tmp;
-    tmp = rto->get_pending();
-    compute_hyperperiod( tmp );     // TODO sto s doubleovima
+    std::vector<Task *> tmp_tasks;
+    for( auto & element : tasks ) {
+        tmp_tasks.push_back( new Task( element ) );
+    }
+
+    Task *tmp_running;
+    if( running ) {
+        tmp_running = new Task( running );
+        tmp_running->update_remaining();
+        tmp_tasks.push_back( tmp_running );
+    }
+
+    compute_hyperperiod( tmp_tasks );     // TODO sto s doubleovima
 //    hyperperiod = 18;
     rto->set_finish_time(static_cast<double> (hyperperiod) );
-    if( running ) {
-        tasks.push_back( running );
-    }
-    for( auto & element : tasks ) {
+    for( auto & element : tmp_tasks ) {
         element->set_arrival_time( current_time );
+        element->set_abs_dd();
+        element->set_skip_factor( 2 );
     }
-    rto->set_pending( tasks );
+    rto->set_pending( tmp_tasks );
     rto->set_abs_time( current_time );
     rto->simulate( 1 );
     deadline_vector = rto->get_deadline_vector();
@@ -63,10 +73,37 @@ bool EDL::compute_availability( double time )
         if( time >= EDL_deadline_vector[i] ) {
             idle_interval = EDL_deadline_vector[i];
             index = i;
-            if( islessequal( time, idle_interval + EDL_idle_time_vector[index] ) ) {
+            if( isless( time, idle_interval + EDL_idle_time_vector[index] ) ) {
                 return true;
             }
         }
     }
     return false;
+}
+
+bool EDL::dynamic_sched( std::vector<Task *> tasks, const Task *running, int current_time )
+{
+    std::vector<Task *> tmp;
+    std::vector<Task *> tmp_tasks;
+    for( auto & element : tasks ) {
+        tmp_tasks.push_back( new Task( element ) );
+    }
+
+    Task *tmp_running;
+    if( running ) {
+        tmp_running = new Task( running );
+        tmp_running->update_remaining();
+        tmp_tasks.push_back( tmp_running );
+    }
+
+    for( auto & element : tmp_tasks ) {
+        element->set_abs_dd();
+        element->set_time_started( element->get_abs_due_date() - element->get_remaining() );
+    }
+    for( auto & element : tmp_tasks ) {
+        if( current_time >= element->get_time_started() && current_time < element->get_abs_due_date()  ) {
+            return false;
+        }
+    }
+    return true;
 }

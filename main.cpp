@@ -20,7 +20,7 @@ int main()
     rto->pending = pending;         // TODO napraviti ovo pametnije i staviti pending u private
     EDL *edl = new EDL( rto );
     RLP *rlp = new RLP( edl, pending, 1 );
-    rlp->simulate( 20 );
+    rlp->simulate( 72 );
 
 //    RTO *alg = new RTO( 4, tc, sched, 72 );
 //    alg->load();
