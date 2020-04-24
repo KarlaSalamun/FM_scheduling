@@ -18,9 +18,13 @@ int main()
     RTO *rto = new RTO( 4, tc, sched, 72 );
     tc->load_tasks( pending );
     rto->pending = pending;         // TODO napraviti ovo pametnije i staviti pending u private
-    EDL *edl = new EDL( rto );
-    RLP *rlp = new RLP( edl, pending, 1 );
-    rlp->simulate( 72 );
+//    EDL *edl = new EDL( rto );
+//    RLP *rlp = new RLP( edl, pending, 1 );
+//    rlp->simulate( 72 );
+
+    BWP *bwp = new BWP( 4, tc, sched, 72 );
+    bwp->pending = pending;
+    bwp->simulate( 1 );
 
 //    RTO *alg = new RTO( 4, tc, sched, 72 );
 //    alg->load();

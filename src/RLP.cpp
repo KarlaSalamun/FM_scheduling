@@ -2,7 +2,6 @@
 
 void RLP::simulate( double finish_time )
 {
-
 //    edl->compute_EDL_deadline_vector();
 //    edl->set_EDL_idle_time_vector();
 
@@ -92,6 +91,7 @@ void RLP::algorithm( double current_time )
     else {
         availability = edl->dynamic_sched( red_ready, nullptr, current_time);
     }
+    // idle time -> suspend red task
     if( !blue_ready.empty() and availability ) {
         it = red_ready.begin();
         while( it != red_ready.end() ) {

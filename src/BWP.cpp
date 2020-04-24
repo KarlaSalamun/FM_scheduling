@@ -1,35 +1,71 @@
 //
 // Created by karla on 15. 04. 2020..
 //
+#include <cmath>
+#include <algorithm>
 #include "BWP.h"
 
 void BWP::simulate( double time_slice )
 {
+    for( auto & element : pending ) {
+        element->initialize_task();
+    }
     Task *running = nullptr;				// TODO: ovo je leak
-    while( abs_time < finish_time ) {
-//        red.clear();
-//        blue.clear();
-        std::vector<Task *>::iterator it = pending.begin();
+    while( abs_time <= finish_time ) {
+        printf( "\ntime: %f\n", abs_time );
 
-        while( it != pending.end() ) {
-            if ( (*it)->isReady( abs_time ) ) {
-                all_tasks++;
-                (*it)->inc_instance();
-                if( (*it)->get_state() == RED ) {
-                    red.push_back( std::move( *it ) );
-                }
-                else {
-                    printf( "task %d is skipped\n", (*it)->get_id() );
-                    blue.push_back( std::move( *it ) );
-                }
-                it = pending.erase( it );
-                printf( "task %d is ready!\n", (*it)->get_id() );
+        if( running ) {
+            if( abs_time == running->get_abs_due_date() and
+                std::isgreater( running->get_remaining(), 0  )  ) {
+                running->inc_instance();
+                running->set_curr_skip_value(1);
+                running->set_state( RED );
+                running->update_params();
+                running->reset_remaining();
+                pending.push_back( std::move( running ) );
+                running = nullptr;
+                printf( "MISS\n" );
+                missed++;
             }
-            else {
+        }
+        // check blue ready in order to abort tasks
+        std::vector<Task *>::iterator it;
+        it = blue.begin();
+        while( it != blue.end() ) {
+            if ((*it)->is_next_instance(abs_time)) {
+                (*it)->set_curr_skip_value(1);
+                (*it)->set_state(RED);
+                (*it)->inc_instance();
+                (*it)->update_params();
+                pending.push_back(std::move(*it));
+                it = blue.erase(it);
+                printf( "SKIP\n" );
+                missed++;
+            } else {
                 it++;
             }
         }
-//        std::copy( blue.begin(), blue.end(), std::back_inserter( pending ) );
+
+//        red.clear();
+//        blue.clear();
+        it = pending.begin();
+        std::sort(pending.begin(), pending.end(),
+                  [](const Task *a, const Task *b)
+                          -> bool { return a->get_arrival_time() < b->get_arrival_time(); });
+
+        while( it != pending.end() ) {
+            if ((*it)->get_arrival_time() > abs_time) {
+                break;
+            }
+            if ((*it)->get_state() == RED) {
+                red.push_back(*it);
+                it = pending.erase(it);
+            } else {
+                blue.push_back(*it);
+                it = pending.erase(it);
+            }
+            all_tasks++;
+        }
 
         if( !red.empty() ) {
             printf( "scheduling red tasks : " );
@@ -71,48 +107,17 @@ void BWP::simulate( double time_slice )
             }
         }
 
-        it = red.begin();
-        while( it != red.end() ) {
-            // next arrival time is less than current time -> missed task, new instance appeared
-            if( (*it)->is_missed( abs_time + time_slice ) ) {
-//				printf("Missed task %d\n", (*it)->get_id() );
-                pending.push_back( *it );
-                it = red.erase( it );
-                missed++;
-            }
-            else {
-                it++;
-            }
-        }
-        it = blue.begin();
-        while( it != blue.end() ) {
-            // next arrival time is less than current time -> missed task, new instance appeared
-            if( (*it)->is_missed( abs_time + time_slice ) ) {
-//				printf("Missed task %d\n", (*it)->get_id() );
-                pending.push_back( *it );
-                it = blue.erase( it );
-                missed++;
-            }
-            else {
-                it++;
-            }
-        }
-
         abs_time += time_slice;
-        printf( "\ntime: %f\n\n", abs_time );
+
+        printf( "task %d is running, %f remaining\n", running->get_id(), running->get_remaining() );
 
         if( running ) {
-            if( running->missed_deadline( abs_time ) ) {
-                printf( "task %d missed deadline!\n", running->get_id() );
-                running->update_tardiness( abs_time );
-                running->reset_remaining();
-                pending.push_back( std::move( running ) );
-                running = nullptr;
-            }
-            else if( running->isFinished() ) {
+            if( running->isFinished() ) {
                 printf( "task %d is finished!\n", running->get_id() );
                 running->update_tardiness( abs_time );
                 running->reset_remaining();
+                running->inc_instance();
+                running->update_rb_params();
                 pending.push_back( std::move( running ) );
                 running = nullptr;
                 completed_tasks++;
@@ -122,14 +127,8 @@ void BWP::simulate( double time_slice )
 //				printf("remaining time: %f\n", running->get_remaining() );
             }
         }
-
-        for( auto & element : pending ) {
-            if( element->is_next_instance( abs_time ) ) {
-                element->update_rb_params();                 // TODO popraviti ovo: kad je blue zadatak completed, sljedeci je blue. kad ima miss onda je red!
-            }
-        }
     }
 
-    set_qos( ( completed_tasks ) / static_cast<double>(all_tasks) );
+    set_qos( 1 - static_cast<double>(missed) / static_cast<double>( missed + completed_tasks ) );
     printf( "qos: %f\n", get_qos() );
 }
