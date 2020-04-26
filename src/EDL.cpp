@@ -19,7 +19,7 @@ void EDL::compute_schedule( const std::vector<Task *> tasks, const Task *running
         tmp_tasks.push_back( tmp_running );
     }
 
-    compute_hyperperiod( tmp_tasks );     // TODO sto s doubleovima
+    rto->creator->compute_hyperperiod( tmp_tasks );     // TODO sto s doubleovima
 //    hyperperiod = 18;
     rto->set_finish_time(static_cast<double> (hyperperiod) );
     for( auto & element : tmp_tasks ) {
@@ -36,17 +36,7 @@ void EDL::compute_schedule( const std::vector<Task *> tasks, const Task *running
 //    compute_EDL_deadline_vector();
 }
 
-void EDL::compute_hyperperiod(std::vector<Task *> &tasks)
-{
-    std::vector<int> periods;
-    for( auto & element : tasks ) {
-        periods.push_back( static_cast<int>( element->get_period() ) );
-    }
-    hyperperiod = std::accumulate(periods.begin(), periods.end(), 1,
-            [](int a, int b) -> int {
-                return abs( a * b) / std::__gcd(a, b);
-    });
-}
+
 
 void EDL::compute_EDL_deadline_vector()
 {

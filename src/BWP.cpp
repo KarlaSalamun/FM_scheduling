@@ -11,8 +11,11 @@ void BWP::simulate( double time_slice )
         element->initialize_task();
     }
     Task *running = nullptr;				// TODO: ovo je leak
+    abs_time = 0;
+    red.clear();
+    blue.clear();
     while( abs_time <= finish_time ) {
-        printf( "\ntime: %f\n", abs_time );
+//        printf( "\ntime: %f\n", abs_time );
 
         if( running ) {
             if( abs_time == running->get_abs_due_date() and
@@ -24,7 +27,7 @@ void BWP::simulate( double time_slice )
                 running->reset_remaining();
                 pending.push_back( std::move( running ) );
                 running = nullptr;
-                printf( "MISS\n" );
+//                printf( "MISS\n" );
                 missed++;
             }
         }
@@ -39,15 +42,13 @@ void BWP::simulate( double time_slice )
                 (*it)->update_params();
                 pending.push_back(std::move(*it));
                 it = blue.erase(it);
-                printf( "SKIP\n" );
+//                printf( "SKIP\n" );
                 missed++;
             } else {
                 it++;
             }
         }
 
-//        red.clear();
-//        blue.clear();
         it = pending.begin();
         std::sort(pending.begin(), pending.end(),
                   [](const Task *a, const Task *b)
@@ -68,11 +69,11 @@ void BWP::simulate( double time_slice )
         }
 
         if( !red.empty() ) {
-            printf( "scheduling red tasks : " );
-            for( auto & element : red ) {
-                printf( "%d ", element->get_id() );
-            }
-            printf( "\n" );
+//            printf( "scheduling red tasks : " );
+//            for( auto & element : red ) {
+//                printf( "%d ", element->get_id() );
+//            }
+//            printf( "\n" );
 
             for( size_t i=0; i<red.size(); i++ ) {
                 red[i]->update_priority(abs_time);
@@ -91,11 +92,11 @@ void BWP::simulate( double time_slice )
         }
         else if (!blue.empty() ) {
             if( running == nullptr  || running->get_state() == BLUE ) {
-                printf( "scheduling blue tasks : " );
-                for( auto & element : blue ) {
-                    printf( "%d", element->get_id() );
-                }
-                printf( "\n" );
+//                printf( "scheduling blue tasks : " );
+//                for( auto & element : blue ) {
+//                    printf( "%d", element->get_id() );
+//                }
+//                printf( "\n" );
 
                 for( size_t i=0; i<blue.size(); i++ ) {
                     blue[i]->update_priority( abs_time );
@@ -109,11 +110,11 @@ void BWP::simulate( double time_slice )
 
         abs_time += time_slice;
 
-        printf( "task %d is running, %f remaining\n", running->get_id(), running->get_remaining() );
+//        printf( "task %d is running, %f remaining\n", running->get_id(), running->get_remaining() );
 
         if( running ) {
             if( running->isFinished() ) {
-                printf( "task %d is finished!\n", running->get_id() );
+//                printf( "task %d is finished!\n", running->get_id() );
                 running->update_tardiness( abs_time );
                 running->reset_remaining();
                 running->inc_instance();
@@ -129,6 +130,6 @@ void BWP::simulate( double time_slice )
         }
     }
 
-    set_qos( 1 - static_cast<double>(missed) / static_cast<double>( missed + completed_tasks ) );
-    printf( "qos: %f\n", get_qos() );
+    set_qos(static_cast<double> (completed_tasks) / static_cast<double>( completed_tasks + missed ) );
+//    printf( "qos: %f\n", get_qos() );
 }

@@ -1,10 +1,10 @@
 #include "RLP.h"
 
-void RLP::simulate( double finish_time )
+void RLP::simulate()
 {
 //    edl->compute_EDL_deadline_vector();
 //    edl->set_EDL_idle_time_vector();
-
+    abs_time = 0;
     for( auto & element : waiting ) {
         element->set_state( RED );      // first instance is always red
         element->set_arrival_time( 0 );     // all instances have release time = 0
@@ -19,18 +19,11 @@ void RLP::simulate( double finish_time )
     tmp = edl->get_deadline_vector();
     edl->set_EDL_deadline_vector( tmp );
 
-    for( auto & element : waiting ) {
-        element->set_state( RED );      // first instance is always red
-        element->set_arrival_time( 0 );     // all instances have release time = 0
-        element->initialize_task();
-        element->set_skip_factor(2);
-        element->set_abs_dd();
-    }
-
     while( abs_time <= finish_time ) {
         algorithm(abs_time);
         abs_time += time_slice;
     }
+    compute_qos();
 }
 
 void RLP::algorithm( double current_time )
@@ -48,6 +41,7 @@ void RLP::algorithm( double current_time )
             running->reset_remaining();
             waiting.push_back( std::move( running ) );
             running = nullptr;
+            missed_tasks++;
         }
     }
     // check blue ready in order to abort tasks
@@ -61,6 +55,7 @@ void RLP::algorithm( double current_time )
             (*it)->set_arrival_time();
             waiting.push_back(std::move(*it));
             it = blue_ready.erase(it);
+            missed_tasks++;
         } else {
             it++;
         }
@@ -112,10 +107,11 @@ void RLP::algorithm( double current_time )
 
     if( running ) {
         if( running->isFinished() ) {
+            completed++;
             running->reset_remaining();
             running->inc_instance();
             running->update_rb_params();
-            printf( "time : %f\ttask %d is finished\n", current_time, running->get_id() );
+//            printf( "time : %f\ttask %d is finished\n", current_time, running->get_id() );
             waiting.push_back( std::move(running) );
             running = nullptr;
         }
@@ -123,9 +119,14 @@ void RLP::algorithm( double current_time )
 
     if( !running ) {
         if( blue_ready.empty() ) {
-            running = std::move( red_ready[0] );
-            red_ready.erase( red_ready.begin() );
-            printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+            if( !red_ready.empty() ) {
+                running = std::move( red_ready[0] );
+                red_ready.erase( red_ready.begin() );
+//                printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+            }
+            else {
+                running = nullptr;
+            }
         }
         else {
             if( availability ) {
@@ -134,12 +135,12 @@ void RLP::algorithm( double current_time )
                 }
                 running = std::move( blue_ready[0] );
                 blue_ready.erase( blue_ready.begin() );
-                printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+//                printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
             }
             else {   // schedule red by EDL
                 running = std::move( red_ready[0] );
                 red_ready.erase( red_ready.begin() );
-                printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+//                printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
             }
         }
     }
@@ -152,7 +153,7 @@ void RLP::algorithm( double current_time )
             red_ready.push_back( running );
             running = std::move( blue_ready[0] );
             blue_ready.erase( blue_ready.begin() );
-            printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+//            printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
 
         }
         else {
@@ -163,7 +164,7 @@ void RLP::algorithm( double current_time )
                     blue_ready.push_back(running);
                     running = std::move(red_ready[0]);
                     red_ready.erase(red_ready.begin());
-                    printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
+//                    printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
 
                 }
             }
@@ -183,4 +184,9 @@ void RLP::break_dd_tie( std::vector<Task *> tasks )
             }
         }
     }
+}
+
+void RLP::compute_qos()
+{
+    this->qos = static_cast<double>(completed) / static_cast<double>( completed + missed_tasks );
 }

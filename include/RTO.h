@@ -10,8 +10,8 @@
 
 class RTO {
 public:
-    RTO( int task_number, UunifastCreator *creator, Scheduler *sched, double finish_time ) :
-        task_number( task_number ), creator( creator ), sched( sched ), finish_time( finish_time ) {}
+    RTO( UunifastCreator *creator, int task_number, Scheduler *sched, double finish_time ) :
+         creator( creator ), task_number( task_number ), sched( sched ), finish_time( finish_time ) {}
     void initialize();
     void load();
     virtual void simulate( double time_slice );
@@ -32,15 +32,15 @@ public:
     std::vector<double> get_idle_time_vector() {
         return idle_time_vector;
     }
-    void set_pending( std::vector<Task *> tasks ) {
-        pending = tasks;
-    }
+    void set_pending( std::vector<Task *> tasks );
     void set_running( Task *task ) {
         this->running = task;
     }
     void set_abs_time( double current_time ) {
         this->abs_time = current_time;
     }
+public:
+    UunifastCreator *creator;
 
 protected:
     int task_number;
@@ -49,7 +49,6 @@ protected:
     std::vector<Task *> ready;
     std::vector<Task *> red;
     std::vector<Task *> blue;
-    UunifastCreator *creator;
     Scheduler *sched;
     double abs_time = 0;
     int missed = 0;

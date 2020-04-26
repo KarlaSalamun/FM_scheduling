@@ -10,7 +10,7 @@
 class BWP : public RTO {
 public:
     BWP( int task_number, UunifastCreator *creator, Scheduler *sched, double finish_time ) :
-        RTO( task_number, creator, sched, finish_time ) {}
+        RTO( creator, task_number, sched, finish_time ) {}
     virtual void simulate( double time_slice );
 };
 
