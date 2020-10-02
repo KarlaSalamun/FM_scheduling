@@ -38,6 +38,9 @@ public:
     void set_EDL_deadline_vector( std::vector<double> vector ) {
         this->EDL_deadline_vector = vector;
     }
+    void set_tasks( std::vector<Task *> tasks ) {
+        this->rto->set_pending( tasks );
+    }
     void update_EDL_idle_time_vector() {
         EDL_idle_time_vector.clear();
         std::copy(idle_time_vector.begin(), idle_time_vector.end(), std::back_inserter( EDL_idle_time_vector ));

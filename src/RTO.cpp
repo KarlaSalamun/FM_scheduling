@@ -28,11 +28,19 @@ void RTO::set_pending( std::vector<Task *> tasks )
     this->pending = tasks;
     for( auto & element : pending ) {
         element->initialize_task();
+        element->set_skip_factor( 2 );
     }
 }
 
 void RTO::simulate( double time_slice )
 {
+    FILE *fd = fopen( filename.c_str(), "w+" );
+    if( display_sched ) {
+        fprintf( fd, "\\documentclass{article}" );
+        fprintf( fd, "\\usepackage{rtsched}" );
+        fprintf( fd, "\\begin{document}" );
+        fprintf( fd, "\\begin{RTGrid}[width=15cm]{%zu}{%d}\n", pending.size(), static_cast<int>( finish_time ));
+    }
     abs_time = 0;
     all_tasks = 0;
     completed_tasks = 0;
@@ -78,6 +86,8 @@ void RTO::simulate( double time_slice )
             } else {
                 blue.push_back(*it);
             }
+            if( display_sched )
+                fprintf( fd, "\t\\TaskArrDead{%d}{%d}{%d}\n", (*it)->get_id()+1, static_cast<int>( abs_time ), static_cast<int>( (*it)->get_period() ) );
             it = pending.erase( it );
             all_tasks++;
         }
@@ -119,6 +129,8 @@ void RTO::simulate( double time_slice )
             }
             // printf( "%d: %f\n", ready[i]->id, ready[i]->priority );
             sched->schedule_next(ready, running, abs_time);
+            if( display_sched )
+                fprintf( fd, "\t\\TaskExecDelta{%d}{%d}{%d}\n", (*it)->get_id()+1, static_cast<int>( abs_time ), static_cast<int>( time_slice ));
         }
 
         abs_time += time_slice;
@@ -159,6 +171,11 @@ void RTO::simulate( double time_slice )
         }
     }
 
+    if( display_sched ) {
+        fprintf( fd, "\\end{RTGrid}\n" );
+        fprintf( fd, "\\end{document}\n" );
+        fclose( fd );
+    }
 
     set_qos( ( completed_tasks ) / static_cast<double>(all_tasks) );
 //    printf( "qos: %f\n", get_qos() );
@@ -167,6 +184,7 @@ void RTO::simulate( double time_slice )
 double RTO::compute_eq_utilization()
 {
     double max=0;
+    int max_index = 1;
     for( int l=1; l<finish_time; l++ ) {
         double sum = 0;
         for( auto & element : pending ) {
@@ -174,6 +192,7 @@ double RTO::compute_eq_utilization()
         }
         if( sum/l > max ) {
             max = sum/l;
+            max_index = l;
         }
     }
     return max;

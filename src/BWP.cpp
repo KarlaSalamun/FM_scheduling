@@ -3,13 +3,19 @@
 //
 #include <cmath>
 #include <algorithm>
+#include <cassert>
 #include "BWP.h"
 
 void BWP::simulate( double time_slice )
 {
     for( auto & element : pending ) {
         element->initialize_task();
+        element->set_skip_factor( 2 );
     }
+    all_tasks = 0;
+    completed_tasks = 0;
+    missed = 0;
+
     Task *running = nullptr;				// TODO: ovo je leak
     abs_time = 0;
     red.clear();
@@ -65,7 +71,6 @@ void BWP::simulate( double time_slice )
                 blue.push_back(*it);
                 it = pending.erase(it);
             }
-            all_tasks++;
         }
 
         if( !red.empty() ) {
@@ -129,7 +134,6 @@ void BWP::simulate( double time_slice )
             }
         }
     }
-
     set_qos(static_cast<double> (completed_tasks) / static_cast<double>( completed_tasks + missed ) );
 //    printf( "qos: %f\n", get_qos() );
 }

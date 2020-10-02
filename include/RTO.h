@@ -10,8 +10,8 @@
 
 class RTO {
 public:
-    RTO( UunifastCreator *creator, int task_number, Scheduler *sched, double finish_time ) :
-         creator( creator ), task_number( task_number ), sched( sched ), finish_time( finish_time ) {}
+    RTO( UunifastCreator *creator, int task_number, Scheduler *sched, double finish_time, bool display_sched ) :
+         creator( creator ), task_number( task_number ), sched( sched ), finish_time( finish_time ), display_sched( display_sched ) {}
     void initialize();
     void load();
     virtual void simulate( double time_slice );
@@ -39,7 +39,9 @@ public:
     void set_abs_time( double current_time ) {
         this->abs_time = current_time;
     }
-public:
+    void set_filename( std::string filename ) {
+        this->filename = filename;
+    }
     UunifastCreator *creator;
 
 protected:
@@ -54,6 +56,7 @@ protected:
     int missed = 0;
     double qos;
     double finish_time;
+    bool display_sched;
     double compute_D( int l, double period, double factor, double duration );
 
 private:
@@ -61,6 +64,7 @@ private:
     bool idle;
     std::vector<double> deadline_vector;
     std::vector<double> idle_time_vector;
+    std::string filename;
 };
 
 #endif //FM_SCHEDULING_RTO_H

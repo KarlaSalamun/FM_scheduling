@@ -8,22 +8,15 @@
 #include "Simulator.tpp"
 
 void print_vector( std::vector<double> vector );
+void test_utils_qos();
 void generate_csv(std::vector<double> results, std::vector<double> utils, std::string filename );
-
+void test_utils_wCPU();
 
 int main()
 {
-    double overload;
-    std::vector<double> qos_rto;
-    std::vector<double> qos_bwp;
-    std::vector<double> qos_rlp;
-    std::vector<double> overload_values;
     std::vector<Task *> pending;
-    UunifastCreator *tc = new UunifastCreator( 4, "./../../test_inputs/rto.txt", true, 100, 10, 10, 1 );
-    tc->set_time_slice( 0.01 );
-
-//    tc->create_test_set( pending );
-//    tc->write_tasks( pending );
+    UunifastCreator *tc = new UunifastCreator( 4, "./../../test_inputs/comparison.txt", true, 100, 10, 10, 1 );
+    tc->set_time_slice( 1 );
 
     tc->load_tasks( pending );
     for( auto & element : pending ) {
@@ -37,42 +30,21 @@ int main()
 
     Scheduler *sched = new Scheduler();
 
-    RTO *rto = new RTO( tc, 4, sched, 72 );
-    BWP *bwp = new BWP( 4, tc, sched, 72 );
+    RTO *rto = new RTO( tc, 3, sched, 72, false );
+    rto->set_pending( pending );
+    rto->compute_eq_utilization();
     EDL *edl = new EDL( rto );
-    RLP *rlp = new RLP( edl, pending, 0.01 );
+    RLP *rlp = new RLP( edl, pending, 1 );
     tc->compute_hyperperiod( pending );
     rto->set_finish_time( tc->get_hyperperiod() );
-    bwp->set_finish_time( tc->get_hyperperiod() );
 
-    for( overload = 0.9; overload <= 1.65; overload = overload + 0.05 ) {
-        overload_values.push_back( overload );
-        double util = 0;
-        tc->set_overload( overload );
-        tc->compute_overloaded( pending, durations );
-        for( auto & element : pending ) {
-            element->initialize_task();
-            util += element->get_duration() / element->get_period();
-        }
-        rto->set_finish_time( tc->get_hyperperiod() );
-        rto->set_pending( pending );
-        rto->simulate( 0.01 );
-        qos_rto.push_back( rto->get_qos() );
+    rlp->set_waiting( pending );
+    rlp->set_finish_time( tc->get_hyperperiod() );
+    rlp->simulate();
 
-        bwp->set_finish_time( tc->get_hyperperiod() );
-        bwp->pending = pending;
-        bwp->simulate( 0.01 );
-        qos_bwp.push_back( bwp->get_qos() );
+    printf( "%lf %lf %lf\n", rlp->get_qos(), rlp->compute_mean_skip_factor(), rlp->compute_gini_coeff() );
 
-        rlp->set_waiting( pending );
-        rlp->set_finish_time( tc->get_hyperperiod() );
-        rlp->simulate();
-        qos_rlp.push_back( rlp->get_qos() );
-    }
-
-    generate_csv( qos_rto, overload_values,"rto.csv" );
-    generate_csv( qos_bwp, overload_values,"bwp.csv" );
-    generate_csv( qos_rlp, overload_values,"rlp.csv" );
+    test_utils_qos();
 
     return 0;
 }
@@ -93,4 +65,117 @@ void generate_csv(std::vector<double> results, std::vector<double> utils, std::s
         fprintf( fd, "%lf,%lf\n", utils[i], results[i] );
     }
     fclose( fd );
+}
+
+void test_utils_qos()
+{
+    UunifastCreator *tc = new UunifastCreator( 2, "./../../test_inputs/test_1.txt", true, 20, 4, 2, 1 );
+    Scheduler *sched = new Scheduler();
+
+    RTO *rto = new RTO( tc, 2, sched, 72, false );
+    EDL *edl = new EDL( rto );
+    RLP *rlp = new RLP( edl, 1 );
+    BWP *bwp = new BWP( 2, tc, sched, 72, false );
+
+    std::vector<double> utils;
+    std::vector<double> results;
+
+    std::vector<Task *> test_tasks;
+
+    for( size_t i=0; i<=14; i++ ) {
+        utils.push_back( 0.90 + i * 0.05 );
+    }
+
+    std::vector<double> mean_qos_rto;
+    std::vector<double> mean_qos_bwp;
+    std::vector<double> mean_qos_rlp;
+
+    std::vector<double> actual_utils;
+
+    for( size_t i=0; i<utils.size(); i++ ) {
+        tc->set_overload(utils[i]);
+        tc->set_task_number(6);
+        for (size_t j = 0; j < 100; j++) {
+            do {
+                tc->create_test_set(test_tasks);
+                tc->compute_hyperperiod( test_tasks );
+            } while( tc->get_hyperperiod() > 10000 );
+
+            double tmp_util = 0;
+            for( auto & element : test_tasks ) {
+                element->set_skip_factor( 2 );
+                tmp_util += static_cast<double> (element->get_duration()) / static_cast<double> (element->get_period());
+            }
+            actual_utils.push_back( tmp_util );
+
+            rto->set_finish_time(tc->get_hyperperiod());
+            bwp->set_finish_time( tc->get_hyperperiod() );
+            rlp->set_waiting( test_tasks );
+            edl->set_tasks( test_tasks );
+            rto->set_pending( test_tasks );
+            bwp->set_pending( test_tasks );
+            bwp->simulate( 1 );
+            mean_qos_bwp.push_back( bwp->get_qos() );
+            rlp->set_finish_time( tc->get_hyperperiod() );
+            rlp->simulate();
+            assert( rlp->get_wasted_time() <= tc->get_hyperperiod() );
+            mean_qos_rlp.push_back( rlp->get_wasted_time() / tc->get_hyperperiod() );
+            rto->set_finish_time( tc->get_hyperperiod() );
+            rto->simulate( 1 );
+            mean_qos_rto.push_back( rto->get_qos() );
+        }
+    }
+
+    generate_csv( mean_qos_rlp, actual_utils, "rlp_qos1.csv" );
+}
+
+void test_utils_wCPU()
+{
+    UunifastCreator *tc = new UunifastCreator( 2, "./../../test_inputs/test_1.txt", true, 20, 4, 2, 1 );
+    Scheduler *sched = new Scheduler();
+
+    RTO *rto = new RTO( tc, 2, sched, 72, false );
+    EDL *edl = new EDL( rto );
+    RLP *rlp = new RLP( edl, 1 );
+
+    std::vector<double> utils;
+    std::vector<double> results;
+
+    std::vector<Task *> test_tasks;
+
+    for( size_t i=0; i<=14; i++ ) {
+        utils.push_back( 0.90 + i * 0.05 );
+    }
+    std::vector<double> mean_qos_rlp;
+
+    std::vector<double> actual_utils;
+
+    for( size_t i=0; i<utils.size(); i++ ) {
+        tc->set_overload(utils[i]);
+        tc->set_task_number(6);
+        for (size_t j = 0; j < 100; j++) {
+            do {
+                tc->create_test_set(test_tasks);
+                tc->compute_hyperperiod(test_tasks);
+            } while (tc->get_hyperperiod() > 10000);
+
+            double tmp_util = 0;
+            for (auto &element : test_tasks) {
+                element->set_skip_factor(2);
+                element->initialize_task();
+                tmp_util += static_cast<double> (element->get_duration()) / static_cast<double> (element->get_period());
+            }
+            actual_utils.push_back(tmp_util);
+
+            rto->set_finish_time(tc->get_hyperperiod());
+            rlp->set_waiting(test_tasks);
+            edl->set_tasks(test_tasks);
+            rto->set_pending(test_tasks);
+            rlp->set_finish_time(tc->get_hyperperiod());
+            rlp->simulate();
+            mean_qos_rlp.push_back(rlp->get_wasted_time());
+        }
+    }
+
+    generate_csv( mean_qos_rlp, actual_utils, "rlp_wCPU.csv" );
 }

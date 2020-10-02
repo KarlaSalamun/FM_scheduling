@@ -86,10 +86,24 @@ bool EDL::dynamic_sched( std::vector<Task *> tasks, const Task *running, int cur
         tmp_tasks.push_back( tmp_running );
     }
 
-    for( auto & element : tmp_tasks ) {
-        element->set_abs_dd();
-        element->set_time_started( element->get_abs_due_date() - element->get_remaining() );
+    std::sort(tmp_tasks.begin(), tmp_tasks.end(),
+              [](const Task *a, const Task *b)
+                      -> bool { return a->get_period() > b->get_period(); });
+
+    tmp_tasks[0]->set_abs_dd();
+    double time_started = tmp_tasks[0]->get_abs_due_date() - tmp_tasks[0]->get_remaining();
+    tmp_tasks[0]->set_time_started( time_started );
+    for( size_t i = 1; i<tmp_tasks.size(); i++ ) {
+        tmp_tasks[i]->set_abs_dd();
+        if( tmp_tasks[i]->get_abs_due_date() > time_started ) {
+            time_started = time_started - tmp_tasks[i]->get_remaining();
+        }
+        else {
+            time_started = tmp_tasks[i]->get_abs_due_date() - tmp_tasks[i]->get_remaining();
+        }
+        tmp_tasks[i]->set_time_started( time_started );
     }
+
     for( auto & element : tmp_tasks ) {
         if( current_time >= element->get_time_started() && current_time < element->get_abs_due_date()  ) {
             return false;

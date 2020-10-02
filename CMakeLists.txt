@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(FM_scheduling LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra")
 
 include_directories(include)
 include_directories(periodic_tasks_simulator/include)
