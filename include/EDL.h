@@ -16,26 +16,26 @@ class EDL {
 public:
     EDL( RTO *rto ) : rto( rto ) {}
     void compute_schedule( const std::vector<Task *> tasks, const Task *running, double current_time );
-    std::vector<double> get_deadline_vector()
+    std::vector<uint32_t> get_deadline_vector()
     {
         return deadline_vector;
     }
-    std::vector<double> get_idle_time_vector()
+    std::vector<uint32_t > get_idle_time_vector()
     {
         return idle_time_vector;
     }
-    std::vector<double> get_EDL_deadline_vector()
+    std::vector<uint32_t> get_EDL_deadline_vector()
     {
         return EDL_deadline_vector;
     }
-    std::vector<double> get_EDL_idle_time_vector()
+    std::vector<uint32_t> get_EDL_idle_time_vector()
     {
         return EDL_idle_time_vector;
     }
-    void set_EDL_idle_time_vector( std::vector<double> vector ) {
+    void set_EDL_idle_time_vector( std::vector<uint32_t> vector ) {
         this->EDL_idle_time_vector = vector;
     }
-    void set_EDL_deadline_vector( std::vector<double> vector ) {
+    void set_EDL_deadline_vector( std::vector<uint32_t> vector ) {
         this->EDL_deadline_vector = vector;
     }
     void set_tasks( std::vector<Task *> tasks ) {
@@ -49,14 +49,18 @@ public:
     void compute_EDL_deadline_vector();
     void update_schedule( double curr_time );
     bool compute_availability( double time );
-    bool dynamic_sched( std::vector<Task *> tasks, const Task *running, int current_time );
+    bool dynamic_sched( const std::vector<Task *> tasks, const Task *running, int current_time );
+    void compute_static( std::vector<Task *> tasks );
+    void compute_dynamic( uint32_t time, const std::vector<Task *> &ready_tasks, Task *running );
 
 private:
     double hyperperiod;
-    std::vector<double> deadline_vector;
-    std::vector<double> EDL_deadline_vector;
-    std::vector<double> idle_time_vector;
-    std::vector<double> EDL_idle_time_vector;
+    std::vector<uint32_t> deadline_vector;
+    std::vector<uint32_t> EDL_deadline_vector;
+    std::vector<uint32_t> EDL_dynamic_deadline_vector;
+    std::vector<uint32_t> idle_time_vector;
+    std::vector<uint32_t> EDL_idle_time_vector;
+    std::vector<uint32_t> EDL_dynamic_idle_time_vector;
     void compute_hyperperiod(std::vector<Task *> &tasks);
     RTO *rto;
 };

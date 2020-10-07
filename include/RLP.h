@@ -58,4 +58,5 @@ private:
     void algorithm( double current_time );
     static void break_dd_tie( std::vector<Task *> &tasks );
     void compute_qos();
+    bool blue_appeared = false;
 };

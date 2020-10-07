@@ -27,22 +27,29 @@ void RLP::simulate()
     blue_ready.clear();
     red_ready.clear();
     running = nullptr;
+    std::string prefix = "./../../test_outputs/";
+    FILE *fd = fopen( (prefix + "rlp_schedule1.txt").c_str(), "w+" );
+
     for( auto & element : waiting ) {
         element->set_state( RED );      // first instance is always red
         element->set_arrival_time( 0 );     // all instances have release time = 0
         element->initialize_task();
         element->set_skip_factor(2);
         element->set_abs_dd();
+        fprintf( fd, "%lf %lf\n", element->get_period(), element->get_duration() );
     }
 
-    edl->compute_schedule( waiting, nullptr, 0 );
-    std::vector<double> tmp = edl->get_idle_time_vector();
-    edl->set_EDL_idle_time_vector( tmp );
-    tmp = edl->get_deadline_vector();
-    edl->set_EDL_deadline_vector( tmp );
+//    edl->compute_schedule( waiting, nullptr, 0 );
+    edl->compute_static( waiting );
 
     while( abs_time <= finish_time ) {
         algorithm(abs_time);
+        if(running) {
+            fprintf( fd, "%lf\t%d\t%s\n", abs_time, running->get_id(), running->get_state() == RED ? "red" : "blue" );
+        }
+        else {
+            fprintf( fd, "%lf\t null\n", abs_time );
+        }
         abs_time += time_slice;
     }
     if( running ) {
@@ -59,6 +66,7 @@ void RLP::simulate()
             element->skip_factors.push_back( element->get_curr_skip_value() );
     }
     compute_qos();
+    fclose( fd );
 }
 
 void RLP::algorithm( double current_time )
@@ -79,7 +87,7 @@ void RLP::algorithm( double current_time )
             running->reset_remaining();
 //            running->reset_skip_value();
             running->update_params();
-            waiting.push_back( std::move( running ) );
+            waiting.push_back( running );
             running = nullptr;
             missed_tasks++;
         }
@@ -121,10 +129,12 @@ void RLP::algorithm( double current_time )
         }
     }
 
-    it = waiting.begin();
+    blue_appeared = false;
+
     std::sort(waiting.begin(), waiting.end(),
               [](const Task *a, const Task *b)
                       -> bool { return a->get_arrival_time() < b->get_arrival_time(); });
+    it = waiting.begin();
     while( it != waiting.end() ) {
         if ((*it)->get_arrival_time() > current_time) {
             break;
@@ -135,28 +145,19 @@ void RLP::algorithm( double current_time )
         } else {
             blue_ready.push_back(*it);
             it = waiting.erase(it);
-        }
-    }
-
-    bool availability;
-
-    if( !red_ready.empty() ) {
-        if( running ) {
-            availability = edl->dynamic_sched(  red_ready, running->get_state()==BLUE ? nullptr : running, current_time  );
-        }
-        else {
-            availability = edl->dynamic_sched( red_ready, nullptr, current_time);
+            if( blue_ready.size() == 1 )
+                blue_appeared = true;
         }
     }
 
     // idle time -> suspend red task
-    if( !blue_ready.empty() and availability ) {
-        it = red_ready.begin();
-        while( it != red_ready.end() ) {
-            waiting.push_back( *it );
-            red_ready.erase( it );
-        }
-    }
+//    if( !blue_ready.empty() and availability ) {
+//        it = red_ready.begin();
+//        while( it != red_ready.end() ) {
+//            waiting.push_back( *it );
+//            red_ready.erase( it );
+//        }
+//    }
     if( !red_ready.empty() ) {
         std::sort(red_ready.begin(), red_ready.end(),
                   [](const Task *a, const Task *b)
@@ -168,16 +169,54 @@ void RLP::algorithm( double current_time )
                           -> bool { return a->get_abs_due_date() < b->get_abs_due_date(); });
     }
 
+    bool availability = false;
+
     if( running ) {
         if( running->isFinished() ) {
             completed++;
+            if( running->get_state() == BLUE && !blue_ready.empty() ) {
+                if( !red_ready.empty() ) {
+                    edl->compute_dynamic( current_time, red_ready, nullptr);
+                }
+                else {
+                    availability = true;
+                }
+            }
             running->reset_remaining();
             running->inc_instance();
             running->update_rb_params();
             running->inc_skip_value();
 //            printf( "time : %f\ttask %d is finished\n", current_time, running->get_id() );
-            waiting.push_back( std::move(running) );
+            if( running->isReady( current_time ) ) {
+                if( running->get_state() == BLUE ) {
+                    blue_ready.push_back( running );
+                    std::sort(blue_ready.begin(), blue_ready.end(),
+                              [](const Task *a, const Task *b)
+                                      -> bool { return a->get_abs_due_date() < b->get_abs_due_date(); });
+                }
+                else {
+                    red_ready.push_back( running );
+                    std::sort(red_ready.begin(), red_ready.end(),
+                              [](const Task *a, const Task *b)
+                                      -> bool { return a->get_abs_due_date() < b->get_abs_due_date(); });
+                }
+            }
+            else
+                waiting.push_back(running);
             running = nullptr;
+        }
+    }
+
+    if( blue_appeared ) {
+        if( running ) {
+            if( running->get_state() == RED ) {
+                edl->compute_dynamic(current_time, red_ready, running);
+            }
+        }
+        else {
+            if( !red_ready.empty() ) {
+                edl->compute_dynamic( current_time, red_ready, nullptr);
+            }
         }
     }
 
@@ -193,7 +232,8 @@ void RLP::algorithm( double current_time )
             }
         }
         else {
-            if( red_ready.empty() && !running ) {
+            availability = edl->compute_availability( current_time );
+            if( red_ready.empty() ) {
                 availability = true;
             }
             if( availability ) {
@@ -201,40 +241,55 @@ void RLP::algorithm( double current_time )
                     break_dd_tie( blue_ready );
                 }
                 running = std::move( blue_ready[0] );
+
                 blue_ready.erase( blue_ready.begin() );
 //                printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
             }
-            else {   // schedule red by EDL
-                running = std::move( red_ready[0] );
+            else if (red_ready.size()) {   // schedule red by EDL
+                assert(red_ready.begin() != red_ready.end());
+                running = red_ready[0];
                 red_ready.erase( red_ready.begin() );
 //                printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
             }
         }
     }
-
     else {
-        running->update_remaining();
-//        availability = edl->dynamic_sched( red_ready, running->get_state()==BLUE ? nullptr : running, current_time );
-        if( running->get_state() == RED and availability and !blue_ready.empty() ) {
+        bool running_changed = false;
+        edl->compute_availability(current_time);
+        if (running->get_state() == RED and availability and !blue_ready.empty()) {
 //            running->update_remaining();
-            red_ready.push_back( running );
-            running = std::move( blue_ready[0] );
-            blue_ready.erase( blue_ready.begin() );
+            running_changed = true;
+            red_ready.push_back(running);
+            running = std::move(blue_ready[0]);
+            blue_ready.erase(blue_ready.begin());
 //            printf( "time : %f\tblue instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
 
-        }
-        else {
-            if( !red_ready.empty() and running->get_state() == BLUE ) {
-                availability = edl->dynamic_sched(red_ready, nullptr, current_time);
-                if (!availability) {
-//                    running->update_remaining();
-                    blue_ready.push_back(running);
-                    running = std::move(red_ready[0]);
-                    red_ready.erase(red_ready.begin());
+        } else {
+            if (running->get_state() == BLUE) {
+                if (!red_ready.empty()) {
+                    edl->compute_availability(current_time);
+                    if (!availability) {
+                        running->update_remaining();
+                        running_changed = true;
+                        blue_ready.push_back(running);
+                        running = std::move(red_ready[0]);
+                        assert(red_ready.size());
+                        red_ready.erase(red_ready.begin());
 //                    printf( "time : %f\tred instance of task %d is running, %f remaining\n", current_time, running->get_id(), running->get_remaining() );
 
+                    }
+                }
+                if (blue_ready.front()->get_abs_due_date() < running->get_abs_due_date() && !running_changed) {
+                    running_changed = true;
+                    running->update_remaining();
+                    blue_ready.push_back(running);
+                    running = blue_ready[0];
+                    blue_ready.erase( blue_ready.begin() );
                 }
             }
+        }
+        if (!running_changed) {
+            running->update_remaining();
         }
     }
 //    printf( "task %d is running, %f remaining\n", running->get_id(), running->get_remaining() );

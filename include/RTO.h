@@ -26,10 +26,10 @@ public:
     void set_finish_time( double time ) {
         this->finish_time = time;
     }
-    std::vector<double> get_deadline_vector() {
+    std::vector<uint32_t> get_deadline_vector() {
         return deadline_vector;
     }
-    std::vector<double> get_idle_time_vector() {
+    std::vector<uint32_t> get_idle_time_vector() {
         return idle_time_vector;
     }
     void set_pending( std::vector<Task *> tasks );
@@ -62,8 +62,8 @@ protected:
 private:
     Task *running;
     bool idle;
-    std::vector<double> deadline_vector;
-    std::vector<double> idle_time_vector;
+    std::vector<uint32_t> deadline_vector;
+    std::vector<uint32_t> idle_time_vector;
     std::string filename;
 };
 

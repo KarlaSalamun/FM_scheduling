@@ -15,7 +15,7 @@ void test_utils_wCPU();
 int main()
 {
     std::vector<Task *> pending;
-    UunifastCreator *tc = new UunifastCreator( 4, "./../../test_inputs/comparison.txt", true, 100, 10, 10, 1 );
+    UunifastCreator *tc = new UunifastCreator( 3, "./../../test_inputs/95.txt", true, 100, 10, 10, 1 );
     tc->set_time_slice( 1 );
 
     tc->load_tasks( pending );
@@ -30,7 +30,7 @@ int main()
 
     Scheduler *sched = new Scheduler();
 
-    RTO *rto = new RTO( tc, 3, sched, 72, false );
+    RTO *rto = new RTO( tc, 5, sched, 72, false );
     rto->set_pending( pending );
     rto->compute_eq_utilization();
     EDL *edl = new EDL( rto );
@@ -39,10 +39,13 @@ int main()
     rto->set_finish_time( tc->get_hyperperiod() );
 
     rlp->set_waiting( pending );
+    std::vector<double> K_vector;
+    std::vector<double> D_vector;
+    edl->compute_static( pending );
     rlp->set_finish_time( tc->get_hyperperiod() );
     rlp->simulate();
 
-    printf( "%lf %lf %lf\n", rlp->get_qos(), rlp->compute_mean_skip_factor(), rlp->compute_gini_coeff() );
+//    printf( "%lf %lf %lf\n", rlp->get_qos(), rlp->compute_mean_skip_factor(), rlp->compute_gini_coeff() );
 
     test_utils_qos();
 
@@ -69,20 +72,20 @@ void generate_csv(std::vector<double> results, std::vector<double> utils, std::s
 
 void test_utils_qos()
 {
-    UunifastCreator *tc = new UunifastCreator( 2, "./../../test_inputs/test_1.txt", true, 20, 4, 2, 1 );
+    UunifastCreator *tc = new UunifastCreator( 6, "./../../test_inputs/test_1.txt", true, 20, 4, 2, 1 );
     Scheduler *sched = new Scheduler();
 
-    RTO *rto = new RTO( tc, 2, sched, 72, false );
+    RTO *rto = new RTO( tc, 6, sched, 72, false );
     EDL *edl = new EDL( rto );
     RLP *rlp = new RLP( edl, 1 );
-    BWP *bwp = new BWP( 2, tc, sched, 72, false );
+    BWP *bwp = new BWP( 6, tc, sched, 72, false );
 
     std::vector<double> utils;
     std::vector<double> results;
 
     std::vector<Task *> test_tasks;
 
-    for( size_t i=0; i<=14; i++ ) {
+    for( size_t i=1; i<=14; i++ ) {
         utils.push_back( 0.90 + i * 0.05 );
     }
 
@@ -119,14 +122,19 @@ void test_utils_qos()
             rlp->set_finish_time( tc->get_hyperperiod() );
             rlp->simulate();
             assert( rlp->get_wasted_time() <= tc->get_hyperperiod() );
-            mean_qos_rlp.push_back( rlp->get_wasted_time() / tc->get_hyperperiod() );
+//            mean_qos_rlp.push_back( rlp->get_wasted_time() / tc->get_hyperperiod() );
+            mean_qos_rlp.push_back( rlp->get_qos() );
+            rto->set_abs_time(0);
+            rto->set_pending( test_tasks );
             rto->set_finish_time( tc->get_hyperperiod() );
             rto->simulate( 1 );
             mean_qos_rto.push_back( rto->get_qos() );
+//            assert( rlp->get_qos() >= bwp->get_qos() );
         }
     }
-
+    generate_csv( mean_qos_bwp, actual_utils, "bwp_qos1.csv" );
     generate_csv( mean_qos_rlp, actual_utils, "rlp_qos1.csv" );
+    generate_csv( mean_qos_rto, actual_utils, "rto_qos1.csv" );
 }
 
 void test_utils_wCPU()

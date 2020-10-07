@@ -8,13 +8,17 @@
 
 void BWP::simulate( double time_slice )
 {
+    std::string prefix = "./../../test_outputs/";
+    FILE *fd = fopen( (prefix + "bwp_schedule.txt").c_str(), "w+" );
+
     for( auto & element : pending ) {
         element->initialize_task();
         element->set_skip_factor( 2 );
+        fprintf( fd, "%lf %lf\n", element->get_period(), element->get_duration() );
     }
     all_tasks = 0;
-    completed_tasks = 0;
-    missed = 0;
+    bwp_completed = 0;
+    bwp_missed = 0;
 
     Task *running = nullptr;				// TODO: ovo je leak
     abs_time = 0;
@@ -34,7 +38,7 @@ void BWP::simulate( double time_slice )
                 pending.push_back( std::move( running ) );
                 running = nullptr;
 //                printf( "MISS\n" );
-                missed++;
+                bwp_missed++;
             }
         }
         // check blue ready in order to abort tasks
@@ -49,7 +53,7 @@ void BWP::simulate( double time_slice )
                 pending.push_back(std::move(*it));
                 it = blue.erase(it);
 //                printf( "SKIP\n" );
-                missed++;
+                bwp_missed++;
             } else {
                 it++;
             }
@@ -113,6 +117,12 @@ void BWP::simulate( double time_slice )
             }
         }
 
+        if(running) {
+            fprintf( fd, "%lf\t%d\t%s\n", abs_time, running->get_id(), running->get_state() == RED ? "red" : "blue" );
+        }
+        else {
+            fprintf( fd, "%lf\t null\n", abs_time );
+        }
         abs_time += time_slice;
 
 //        printf( "task %d is running, %f remaining\n", running->get_id(), running->get_remaining() );
@@ -126,7 +136,7 @@ void BWP::simulate( double time_slice )
                 running->update_rb_params();
                 pending.push_back( std::move( running ) );
                 running = nullptr;
-                completed_tasks++;
+                bwp_completed++;
             }
             else {
                 running->update_remaining();
@@ -134,6 +144,7 @@ void BWP::simulate( double time_slice )
             }
         }
     }
-    set_qos(static_cast<double> (completed_tasks) / static_cast<double>( completed_tasks + missed ) );
+    set_qos(static_cast<double> (bwp_completed) / static_cast<double>( bwp_completed + bwp_missed ) );
+    fclose(fd);
 //    printf( "qos: %f\n", get_qos() );
 }
